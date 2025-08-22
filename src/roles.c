@@ -1,5 +1,6 @@
 #include "roles.h"
 #include "ipc.h"
+#include "ui.h"
 #include "termspawn.h"
 #include "sound.h"
 #include <stdio.h>
@@ -25,6 +26,10 @@ int run_controller(const char *self_exe) {
     IpcEndpoint srv = {0};
     pid_t term_pid = 0;
 
+    char name[56];
+    // controller mode
+    prompt_user_name1(name);
+
     if (!ipc_server_start(&srv)) return 1;
 
     if (!spawn_chat_terminal(self_exe, srv.sock_path, NULL, &term_pid)) {
@@ -43,7 +48,7 @@ int run_controller(const char *self_exe) {
 
     char buf[1024];
     while (1) {
-        printf("you> ");
+        printf("%s> ", name);
         fflush(stdout);
 
         // read user input
@@ -74,10 +79,13 @@ int run_controller(const char *self_exe) {
 // 2nd terminal: connect to server, send / receive messages
 int run_chat(const char *sock_path) {
     IpcEndpoint cli = {0};
+    char name[56];
+    // controller mode
 
     if (!ipc_client_connect(&cli, sock_path)) return 1;
 
     printf("chat terminal connected to %s\n", sock_path);
+    prompt_user_name2(name);
 
     char buf[1204];
 
@@ -91,7 +99,7 @@ int run_chat(const char *sock_path) {
         printf("chat> %s\n", msg);
         free(msg);
 
-        printf("you> ");
+        printf("%s> ", name);
         fflush(stdout);
 
         if (!fgets(buf, sizeof(buf), stdin)) break;

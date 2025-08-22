@@ -1,5 +1,4 @@
 #define _GNU_SOURCE
-#include "ui.h"
 #include "roles.h"
 #include <stdio.h>
 #include <string.h>
@@ -26,10 +25,6 @@ int main(int argc, char **argv) {
         const char *sock = argv[2];
         return run_chat(sock);
     }
-
-    char name[56];
-    // controller mode
-    prompt_user_name1(name);
 
     char exe[PATH_MAX];
     self_exe_path(exe, sizeof(exe));
