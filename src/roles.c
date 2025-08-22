@@ -58,12 +58,13 @@ int run_controller(const char *self_exe) {
         }
 
         // recv reply
-        char reply[1024];
-        if(!chat_recv(&srv, reply, sizeof(reply))) {
+        char *reply = chat_recv(&srv);
+        if (!reply) {
             fprintf(stderr, "terminal disconnected\n");
             break;
         }
         printf("terminal> %s\n", reply);
+        free(reply);
     }
 
     cleanup_server(&srv, term_pid);
@@ -81,12 +82,14 @@ int run_chat(const char *sock_path) {
     char buf[1204];
 
     while (1) {
-        if (!chat_recv(&cli, buf, sizeof(buf))) {
+        char *msg = chat_recv(&cli);
+        if (!msg) {
             fprintf(stderr, "chat disconnected\n");
             break;
         }
 
-        printf("chat> %s\n", buf);
+        printf("chat> %s\n", msg);
+        free(msg);
 
         printf("you> ");
         fflush(stdout);
