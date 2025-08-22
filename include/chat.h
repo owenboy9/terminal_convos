@@ -8,6 +8,6 @@
 int chat_send(IpcEndpoint *ep, const char *msg);
 
 // read msg, store in buf
-int chat_recv(IpcEndpoint *ep, char *buf, size_t n);
+int *chat_recv(IpcEndpoint *ep);
 
 #endif // CHAT_H

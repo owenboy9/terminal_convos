@@ -11,104 +11,94 @@
 
 
 // cleanup helper
-static void cleanup_server(IpcEndpoint *srv, pid_t timer_pid) {
-    if (timer_pid > 0) {
+static void cleanup_server(IpcEndpoint *srv, pid_t term_pid) {
+    if (term_pid > 0) {
         int status;
-        waitpid(timer_pid, &status, 0);
+        waitpid(term_pid, &status, 0);
     }
     ipc_server_cleanup(srv);
 }
 
-// check expected msg
-static int recv_expect(IpcEndpoint *ep, const char *expected) {
-    char buf[256];
-    if (!ipc_recvline(ep->conn_fd, buf, sizeof(buf))) return 0;
-    if (strcmp(buf, expected) != 0) {
-        fprintf(stderr, "unexpected message: %s (expected: %s)\n", buf, expected);
-        return 0;
-    }
-    return 1;
-}
+// controller: create server, spawn terminal, accept connection, send/receive chat messages
 
-// controller: creates server, spawns terminal for timer, accepts conn, orchestrates work-break flow
-
-int run_controller(const char *self_exe, int work, int brk, int rounds) {
+int run_controller(const char *self_exe) {
     IpcEndpoint srv = {0};
-    pid_t timer_pid = 0;
+    pid_t term_pid = 0;
 
     if (!ipc_server_start(&srv)) return 1;
 
-    if (!spawn_timer_terminal(self_exe, srv.sock_path, work, brk, rounds, &timer_pid)) {
+    if (!spawn_chat_terminal(self_exe, srv.sock_path, NULL, &term_pid)) {
         cleanup_server(&srv, 0);
         return 1;
     }
 
     printf("\033[2J\033[H"); // clear screen: \033[2J = ANSI escape code to clear the screen; \033[H Moves cursor to the home position (top-left)
-    printf("waiting for timer to connect...\n");
+    printf("waiting for chat terminal to connect...\n");
     if(!ipc_server_accept(&srv)) {
-        cleanup_server(&srv, timer_pid);
+        cleanup_server(&srv, term_pid);
         return 1;
     }
 
-    printf("timer connected\n");
+    printf("chat terminal connected\n");
 
-    for (int i = 0; i < rounds; ++i) {
-        printf("round %d/%d -- starting WORK on timer terminal...\n", i+1, rounds);
-        if (!ipc_sendf(srv.conn_fd, "RUN_WORK %d", work)) break;
-        if (!recv_expect(&srv, "WORK_DONE")) break;
+    char buf[1024];
+    while (1) {
+        printf("you> ");
+        fflush(stdout);
 
-        // last round
-        if (i == rounds -1) {
-            printf("last round done. signaling END_DAY...\n");
-            // make timer play END_DAY_SOUND
-            ipc_sendf(srv.conn_fd, "END_DAY");
-            recv_expect(&srv, "END_ACK");
+        // read user input
+        if(!fgets(buf, sizeof(buf), stdin)) break;
+        size_t len = strlen(buf);
+        if (len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
 
-            printf("done!\n");
-            break;  // leave the loop
+        // send msg to terminal
+        if (!chat_send(&srv, buf)) {
+            fprintf(stderr, "failed to send your msg\n");
+            break;
         }
 
-        printf("starting BREAK in this terminal...\n");
-        countdown(brk, "break");
-        play_sound(START_WORK_SOUND);
-        if (!ipc_sendf(srv.conn_fd, "BREAK_DONE")) break;
-
+        // recv reply
+        char reply[1024];
+        if(!chat_recv(&srv, reply, sizeof(reply))) {
+            fprintf(stderr, "terminal disconnected\n");
+            break;
+        }
+        printf("terminal> %s\n", reply);
     }
 
-    cleanup_server(&srv, timer_pid);
+    cleanup_server(&srv, term_pid);
     return 0;
-}
 
-// timer: connect to server, run work countdowns on RUN_WORK, play break sound after each work round, signal WORK_DONE, respond to END_DAY
-
-int run_timer(const char *sock_path, int work, int brk, int rounds) {
-    (void)brk; (void)rounds;  // work length is authoritative from controller
-
+// 2nd terminal: connect to server, send / receive messages
+int run_chat(const char *sock_path) {
     IpcEndpoint cli = {0};
+
     if (!ipc_client_connect(&cli, sock_path)) return 1;
-    printf("timer connected to %s\n", sock_path);
 
-    char line[256], cmd[64];
-    int arg = 0;
+    printf("chat terminal connected to %s\n", sock_path);
 
-    while (ipc_recvline(cli.conn_fd, line, sizeof(line))) {
-        if (sscanf(line, "%63s %d", cmd, &arg) >= 1) {
-            if (strcmp(cmd, "RUN_WORK") == 0) {
-                int minutes = (sscanf(line, "%*s %d", &arg) == 1) ? arg : work;
-                printf("starting WORK for %d min...\n", minutes);
-                countdown(minutes, "work");
-                play_sound(START_BREAK_SOUND);
-                if (!ipc_sendf(cli.conn_fd, "WORK_DONE")) break;
-            } else if (strcmp(cmd, "BREAK_DONE") == 0) {
-                printf("break finished on controller. waiting for next RUN_WORK...\n");
-            } else if (strcmp(cmd, "END_DAY") == 0) {
-                play_sound(END_DAY_SOUND);
-                ipc_sendf(cli.conn_fd, "END_ACK");
-                break;
-            } else {
-                fprintf(stderr, "unknown command: %s\n", line);
-            }
+    char buf[1204];
+
+    while (1) {
+        if (!chat_recv(&cli, buf, sizeof(buf))) {
+            fprintf(stderr, "chat disconnected\n");
+            break;
         }
+
+        printf("chat> %s\n", buf);
+
+        printf("you> ");
+        fflush(stdout);
+        
+        if (!fgets(buf, sizeof(buf), stdin)) break;
+        size_t len = strlen(buf);
+        if (len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
+
+        if (!chat_send(&cli, buf)) {
+            fprintf(stderr, "failed to send msg\n");
+            break;
+        }
+        play_sound(NEW_MESSAGE);
     }
 
     close(cli.conn_fd);
