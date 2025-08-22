@@ -4,6 +4,6 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-int spawn_timer_terminal(const char *self_exe, const char *sock_path, int work_min, int break_min, int rounds, pid_t *out_pid);
+int spawn_chat_terminal(const char *self_exe, const char *sock_path, const char *msg, pid_t *out_pid);
 
 #endif // TERMSPAWN_H
