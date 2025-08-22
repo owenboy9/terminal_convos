@@ -13,7 +13,7 @@
 int ipc_server_start(IpcEndpoint *ep) {
 
     // make sure ep->dir_path has a valid mkdtemp template
-    snprintf(ep->dir_path, sizeof(ep->dir_path), "/tmp/pomo.XXXXXX");
+    snprintf(ep->dir_path, sizeof(ep->dir_path), "/tmp/chat.XXXXXX");
     if (!mkdtemp(ep->dir_path)) {
         perror("mkdtemp");
         return 0;
@@ -22,8 +22,8 @@ int ipc_server_start(IpcEndpoint *ep) {
     strncpy(ep->sock_path, ep->dir_path, sizeof(ep->sock_path) - 1);
     ep->sock_path[sizeof(ep->sock_path) -1] = '\0';  // ensure null-termination
 
-    if (strlen(ep->sock_path) + strlen("/pomo.sock") < sizeof(ep->sock_path)) {
-        strncat(ep->sock_path, "/pomo.sock", sizeof(ep->sock_path) - strlen(ep->sock_path) -1);
+    if (strlen(ep->sock_path) + strlen("/chat.sock") < sizeof(ep->sock_path)) {
+        strncat(ep->sock_path, "/chat.sock", sizeof(ep->sock_path) - strlen(ep->sock_path) -1);
     } else {
         fprintf(stderr, "socket path too long!\n");
         return 0;
