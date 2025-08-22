@@ -3,7 +3,7 @@
 #include <string.h>
 
 
-void prompt_user_generic(const char *msg, char *buf, size_t n) {
+static void prompt_user_generic(const char *msg, char *buf, size_t n) {
     printf("\033[2J\033[H");
     printf("%s", msg);
     fflush(stdout);
