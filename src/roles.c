@@ -68,6 +68,7 @@ int run_controller(const char *self_exe) {
 
     cleanup_server(&srv, term_pid);
     return 0;
+}
 
 // 2nd terminal: connect to server, send / receive messages
 int run_chat(const char *sock_path) {
@@ -89,9 +90,10 @@ int run_chat(const char *sock_path) {
 
         printf("you> ");
         fflush(stdout);
-        
+
         if (!fgets(buf, sizeof(buf), stdin)) break;
         size_t len = strlen(buf);
+        
         if (len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
 
         if (!chat_send(&cli, buf)) {
