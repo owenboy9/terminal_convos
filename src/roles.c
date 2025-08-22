@@ -1,7 +1,6 @@
 #include "roles.h"
 #include "ipc.h"
 #include "termspawn.h"
-#include "countdown.h"
 #include "sound.h"
 #include <stdio.h>
 #include <string.h>
