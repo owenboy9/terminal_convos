@@ -11,7 +11,70 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <stddef.h>
+#include <sys/select.h>
+#include <errno.h>
 
+
+// helper for trimming trailing newlines
+static void trim_newline(char *s) {
+    size_t len = strlen(s);
+    if (len && s[len-1] == '\n') s[len-1] = '\0';
+}
+
+// full-duplex chat loop using select()
+// - reads from STDIN and socket concurrently
+// - prints peer messages as they arrive
+// - sends your messages as you type
+// returns 0 on clean exit, 1 on error
+static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
+    char inbuf[1024];
+
+    printf("hey, %s! type /quit to exit.\n!", name);
+
+    for (;;) {
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(STDIN_FILENO, &rfds);
+        FD_SET(ep->conn_fd, &rfds);
+
+        int maxfd = (STDIN_FILENO > ep->conn_fd) ? STDIN_FILENO : ep->conn_fd;
+
+        int rc = select(maxfd + 1, &rfds, NULL, NULL, NULL);
+        if (rc < 0) {
+            if (errno == EINTR) continue;
+            perror("select");
+            return 1;
+        }
+
+        // socket ready, recv & print
+        if (FD_ISSET(ep->conn_fd, &rfds)) {
+            char *msg = chat_recv(ep);
+            if (!msg) {
+                fprintf(stderr, "\n%s disconnected.\n", peer_name);
+                return 1;
+            }
+
+            printf("%s is saying: %s\n", peer_name, msg);
+            free(msg);
+            //re-print prompt if user is typing
+            printf("%s> ", name);
+            fflush(stdout);
+        }
+
+        // stdin ready -- read & send
+        if (FD_ISSET(STDIN_FILENO, &rfds)) {
+            if (!fgets(inbuf, sizeof(inbuf), stdin)) {
+                // EOF on stdin, treat as quit
+                (void)chat_send(ep, "/quit");
+                return 0;
+            }
+            if (!chat_send(ep, inbuf)) {
+                fprintf(stderr, "failed to send message\n");
+                return 1;
+            }
+        }
+    }
+}
 
 // cleanup helper
 static void cleanup_server(IpcEndpoint *srv, pid_t term_pid) {
@@ -47,7 +110,7 @@ int run_controller(const char *self_exe) {
     }
 
     printf("chat terminal connected\n");
-
+// RESTART FROM HERE
     chat_send(&srv, name);
     char *peer_name = chat_recv(&srv);
     if (!peer_name) {
