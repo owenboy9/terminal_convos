@@ -31,7 +31,7 @@ int chat_send(IpcEndpoint *ep, const char *msg) {
     return 1;
 }
 
-int *chat_recv(IpcEndpoint *ep) {
+char *chat_recv(IpcEndpoint *ep) {
     if (!ep || ep->conn_fd <0) return NULL;
     
     size_t cap = 128; // initial buf size
@@ -52,7 +52,7 @@ int *chat_recv(IpcEndpoint *ep) {
 
         if (len + 1 >= cap) {
             cap *= 2;
-            char *tmp = reallock(buf, cap);
+            char *tmp = realloc(buf, cap);
             if (!tmp) {
                 free(buf);
                 return NULL;

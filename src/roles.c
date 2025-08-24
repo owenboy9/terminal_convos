@@ -1,6 +1,7 @@
 #include "roles.h"
 #include "ipc.h"
 #include "ui.h"
+#include "chat.h"
 #include "termspawn.h"
 #include "sound.h"
 #include <stdio.h>
@@ -9,6 +10,7 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <stddef.h>
 
 
 // cleanup helper
@@ -28,7 +30,7 @@ int run_controller(const char *self_exe) {
 
     char name[56];
     // controller mode
-    prompt_user_name1(name);
+    prompt_user_name_1(name, sizeof(name));
 
     if (!ipc_server_start(&srv)) return 1;
 
@@ -45,6 +47,16 @@ int run_controller(const char *self_exe) {
     }
 
     printf("chat terminal connected\n");
+
+    chat_send(&srv, name);
+    char *peer_name = chat_recv(&srv);
+    if (!peer_name) {
+        fprintf(stderr, "failed to receive terminal name\n");
+        cleanup_server(&srv, term_pid);
+        return 1;
+    }
+
+    printf("%s joined chat\n", peer_name);
 
     char buf[1024];
     while (1) {
@@ -68,7 +80,7 @@ int run_controller(const char *self_exe) {
             fprintf(stderr, "terminal disconnected\n");
             break;
         }
-        printf("terminal> %s\n", reply);
+        printf("%s is saying: %s\n", peer_name, reply);
         free(reply);
     }
 
@@ -80,12 +92,21 @@ int run_controller(const char *self_exe) {
 int run_chat(const char *sock_path) {
     IpcEndpoint cli = {0};
     char name[56];
+    prompt_user_name_2(name, sizeof(name));
     // controller mode
 
     if (!ipc_client_connect(&cli, sock_path)) return 1;
 
     printf("chat terminal connected to %s\n", sock_path);
-    prompt_user_name2(name);
+    chat_send(&cli, name);
+    char *peer_name = chat_recv(&cli);
+    if (!peer_name) {
+        fprintf(stderr, "failed to receive terminal name\n");
+        cleanup_server(&cli, 0);
+        return 1;
+    }
+
+    printf("%s joined chat\n", peer_name);
 
     char buf[1204];
 
@@ -96,7 +117,7 @@ int run_chat(const char *sock_path) {
             break;
         }
 
-        printf("chat> %s\n", msg);
+        printf("%s is saying: %s\n", peer_name, msg);
         free(msg);
 
         printf("%s> ", name);

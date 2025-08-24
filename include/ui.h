@@ -1,7 +1,9 @@
 #ifndef UI_H
 #define UI_H
 
-void prompt_user_name_1(char *buf, size_t n);
-void prompt_user_name_2(char *buf, size_t n);
+#include <stddef.h>
 
-#endif
+char *prompt_user_name_1(char *buf, size_t n);
+char *prompt_user_name_2(char *buf, size_t n);
+
+#endif // UI_H
