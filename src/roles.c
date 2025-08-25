@@ -71,7 +71,7 @@ static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
             }
 
             trim_newline(inbuf);
-            if (strcmp(inbuf, "/quit") == =) {
+            if (strcmp(inbuf, "/quit") == 0) {
                 (void)chat_send(ep, "/quit");
                 return 0;
             }
