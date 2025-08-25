@@ -62,6 +62,7 @@ static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
             }
 
             // move to line start, print peer msg, then restore prompt
+            play_sound(NEW_MESSAGE);
             printf("\r%s: %s\n", peer_name, msg);
             free(msg);
             //re-print prompt if user is typing
@@ -144,6 +145,7 @@ int run_controller(const char *self_exe) {
         return 1;
     }
 
+    play_sound(NEW_MESSAGE);
     printf("%s joined chat\n", peer_name);
 
     int res = chat_loop(&srv, name, peer_name);
@@ -181,6 +183,7 @@ int run_chat(const char *sock_path) {
         return 1;
     }
 
+    play_sound(NEW_MESSAGE);
     printf("%s joined chat\n", peer_name);
 
     // full-duplex chat
