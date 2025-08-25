@@ -54,7 +54,8 @@ static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
                 return 1;
             }
 
-            printf("%s is saying: %s\n", peer_name, msg);
+            // move to line start, print peer msg, then restore prompt
+            printf("\r%s: %s\n", peer_name, msg);
             free(msg);
             //re-print prompt if user is typing
             printf("%s> ", name);
@@ -67,6 +68,18 @@ static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
                 // EOF on stdin, treat as quit
                 (void)chat_send(ep, "/quit");
                 return 0;
+            }
+
+            trim_newline(inbuf);
+            if (strcmp(inbuf, "/quit") == =) {
+                (void)chat_send(ep, "/quit");
+                return 0;
+            }
+            if (inbuf[0] == '\0') {
+                // skip empty input
+                printf("%s> ", name);
+                fflush(stdout);
+                continue;
             }
             if (!chat_send(ep, inbuf)) {
                 fprintf(stderr, "failed to send message\n");
