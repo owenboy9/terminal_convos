@@ -51,7 +51,14 @@ static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
             char *msg = chat_recv(ep);
             if (!msg) {
                 fprintf(stderr, "\n%s disconnected.\n", peer_name);
-                return 1;
+                return 0;
+            }
+
+            // handle peer's quitting
+            if (strcmp(msg, "/quit") == 0) {
+                printf("\n%s left the chat\n", peer_name);
+                free(msg);
+                return 0;
             }
 
             // move to line start, print peer msg, then restore prompt
@@ -141,6 +148,7 @@ int run_controller(const char *self_exe) {
 
     int res = chat_loop(&srv, name, peer_name);
     free(peer_name);
+    close(srv.conn_fd);
 
     if (term_pid > 0) {
         int status;
