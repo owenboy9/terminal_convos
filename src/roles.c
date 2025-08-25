@@ -58,7 +58,7 @@ static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
             printf("\r%s: %s\n", peer_name, msg);
             free(msg);
             //re-print prompt if user is typing
-            printf("%s> ", name);
+            printf("you> ");
             fflush(stdout);
         }
 
@@ -77,7 +77,7 @@ static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
             }
             if (inbuf[0] == '\0') {
                 // skip empty input
-                printf("%s> ", name);
+                printf("you> ");
                 fflush(stdout);
                 continue;
             }
