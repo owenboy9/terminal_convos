@@ -110,45 +110,31 @@ int run_controller(const char *self_exe) {
     }
 
     printf("chat terminal connected\n");
-// RESTART FROM HERE
-    chat_send(&srv, name);
+
+    if (!chat_send(&srv, name)) {
+        fprintf(stderr, "failed to send name");
+        ipc_server_cleanup(&srv);
+        return 1;
+    }
+
     char *peer_name = chat_recv(&srv);
     if (!peer_name) {
-        fprintf(stderr, "failed to receive terminal name\n");
+        fprintf(stderr, "failed to receive peer name\n");
         cleanup_server(&srv, term_pid);
         return 1;
     }
 
     printf("%s joined chat\n", peer_name);
 
-    char buf[1024];
-    while (1) {
-        printf("%s> ", name);
-        fflush(stdout);
+    int res = chat_loop(&srv, name, peer_name);
+    free(peer_name);
 
-        // read user input
-        if(!fgets(buf, sizeof(buf), stdin)) break;
-        size_t len = strlen(buf);
-        if (len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
-
-        // send msg to terminal
-        if (!chat_send(&srv, buf)) {
-            fprintf(stderr, "failed to send your msg\n");
-            break;
-        }
-
-        // recv reply
-        char *reply = chat_recv(&srv);
-        if (!reply) {
-            fprintf(stderr, "terminal disconnected\n");
-            break;
-        }
-        printf("%s is saying: %s\n", peer_name, reply);
-        free(reply);
+    if (term_pid > 0) {
+        int status;
+        waitpid(term_pid, &status, 0);
     }
-
-    cleanup_server(&srv, term_pid);
-    return 0;
+    ipc_server_cleanup(&srv);
+    return res;
 }
 
 // 2nd terminal: connect to server, send / receive messages
@@ -159,9 +145,8 @@ int run_chat(const char *sock_path) {
     // controller mode
 
     if (!ipc_client_connect(&cli, sock_path)) return 1;
-
     printf("chat terminal connected to %s\n", sock_path);
-    chat_send(&cli, name);
+    
     char *peer_name = chat_recv(&cli);
     if (!peer_name) {
         fprintf(stderr, "failed to receive terminal name\n");
@@ -169,35 +154,17 @@ int run_chat(const char *sock_path) {
         return 1;
     }
 
-    printf("%s joined chat\n", peer_name);
-
-    char buf[1204];
-
-    while (1) {
-        char *msg = chat_recv(&cli);
-        if (!msg) {
-            fprintf(stderr, "chat disconnected\n");
-            break;
-        }
-
-        printf("%s is saying: %s\n", peer_name, msg);
-        free(msg);
-
-        printf("%s> ", name);
-        fflush(stdout);
-
-        if (!fgets(buf, sizeof(buf), stdin)) break;
-        size_t len = strlen(buf);
-        
-        if (len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
-
-        if (!chat_send(&cli, buf)) {
-            fprintf(stderr, "failed to send msg\n");
-            break;
-        }
-        play_sound(NEW_MESSAGE);
+    if (!chat_send(&cli, name)) {
+        fprintf(stderr, "failed to send your name");
+        close(cli.conn_fd);
+        return 1;
     }
 
+    printf("%s joined chat\n", peer_name);
+
+    // full-duplex chat
+    int res = chat_loop(&cli, name, peer_name);
+    free(peer_name);
     close(cli.conn_fd);
-    return 0;
+    return res;
 }
