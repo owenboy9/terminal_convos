@@ -8,7 +8,7 @@ BUILD_DIR = build
 SOURCES = $(wildcard $(SRC_DIR)/*.c)
 OBJECTS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SOURCES))
 
-TARGET = terminal_chat
+TARGET = terminal_convos
 DIST_DIR = dist
 
 $(TARGET): $(OBJECTS)

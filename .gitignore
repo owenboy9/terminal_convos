@@ -1,2 +1,3 @@
-pomodoro
+terminal_convos
 *.o
+terminal_convos.valgrind.log
