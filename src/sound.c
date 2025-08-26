@@ -1,41 +1,28 @@
+#define _GNU_SOURCE
 #include "sound.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <libgen.h>
 #include <unistd.h>
-#include <sys/wait.h>  
-#include <signal.h>
-#include <spawn.h>
-#include <fcntl.h>
-
-extern char **environ;
+#include <linux/limits.h>
+#include <unistd.h>
 
 const char *NEW_MESSAGE = "sounds/new_message.mp3";
 
-// non-blocking sound player
-void play_sound(const char *path) {
+void play_sound(const char *file) {
+    if (!file) return;
 
-    if (!path) return;
+    char exe[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe)-1);
+    if (len < 0) return;
+    exe[len] = '\0';
 
-    pid_t pid;
-    char *argv[] = {"/usr/bin/mpg123", (char*)path, NULL};
+    char *dir = dirname(exe);
 
-    posix_spawn_file_actions_t actions;
-    posix_spawn_file_actions_init(&actions);
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/../%s", dir, file);
 
-    // redirect stdout / stderr to /dev/null
-    posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY | O_CREAT | O_TRUNC, 0);
-    posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY | O_CREAT | O_TRUNC, 0);
-
-    posix_spawnattr_t attr;
-    posix_spawnattr_init(&attr);
-    posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETPGROUP);
-
-    int rc = posix_spawn(&pid, "/usr/bin/mpg123", &actions, &attr, argv, environ);
-    posix_spawn_file_actions_destroy(&actions);
-    posix_spawnattr_destroy(&attr);
-
-    if (rc != 0) {
-        perror("posix_spawn");
-        return;
-    }
+    char cmd[PATH_MAX + 64]; // extra space for command
+    snprintf(cmd, sizeof(cmd), "mpg123 %s > /dev/null 2>&1 &", path);
+    system(cmd);
 }

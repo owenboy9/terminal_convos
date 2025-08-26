@@ -3,6 +3,6 @@
 
 extern const char *NEW_MESSAGE;
 
-void play_sound(const char *path);
+void play_sound(const char *file);
 
 #endif // SOUND_H
