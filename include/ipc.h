@@ -4,10 +4,10 @@
 #include <stddef.h>
 
 typedef struct {
-    int listen_fd;  // server listening fd (controller side)
+    int listen_fd;  // server listening fd (server side)
     int conn_fd;  // connected fd
-    char dir_path[512];  // /tmp/pomo-XXXXXX
-    char sock_path[512];  //  /tmp/pomodoro-XXXXXX/pomo.sock
+    char dir_path[512];  
+    char sock_path[512];
 } IpcEndpoint;
 
 // controller (server) setup /teardown

@@ -29,6 +29,7 @@ static void trim_newline(char *s) {
 static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
     char inbuf[1024];
 
+    play_sound(NEW_MESSAGE);
     printf("hey, %s! type /quit to exit.\n!", name);
 
     for (;;) {
@@ -62,8 +63,8 @@ static int chat_loop(IpcEndpoint *ep, const char *name, const char *peer_name) {
             }
 
             // move to line start, print peer msg, then restore prompt
-            printf("\r%s: %s\n", peer_name, msg);
             play_sound(NEW_MESSAGE);
+            printf("\r%s: %s\n", peer_name, msg);
             free(msg);
             //re-print prompt if user is typing
             printf("you> ");
@@ -145,8 +146,8 @@ int run_controller(const char *self_exe) {
         return 1;
     }
 
-    printf("%s joined chat\n", peer_name);
     play_sound(NEW_MESSAGE);
+    printf("%s joined chat\n", peer_name);
 
     int res = chat_loop(&srv, name, peer_name);
     free(peer_name);
@@ -183,8 +184,8 @@ int run_chat(const char *sock_path) {
         return 1;
     }
 
-    printf("%s joined chat\n", peer_name);
     play_sound(NEW_MESSAGE);
+    printf("%s joined chat\n", peer_name);
 
     // full-duplex chat
     int res = chat_loop(&cli, name, peer_name);
